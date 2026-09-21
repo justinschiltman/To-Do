@@ -45,14 +45,34 @@ or Safari's **File → Add to Dock**.
 - **Optional dates.** Shown as `Today`, `Tomorrow`, `Friday`, `3 Oct`, coloured
   red when overdue, green today, amber tomorrow.
 - **Priority flags** P1–P4, shown as the colour of the checkbox ring.
-- **Drag to reorder** by the grip handle. Sub-tasks can be dragged between
-  tasks. Works with a mouse and with a finger.
+- **Orders itself.** By default the list sorts by due date, then by priority,
+  and it re-sorts the moment anything changes. See *Ordering* below.
 - **Dark mode**, following the system until you pick a side. The phone's status
   bar follows it too.
 - **Hide completed**, and **undo** on anything destructive.
 
 Tap a task to edit it; that panel is also where **Delete** lives. On a computer,
 hover a row for its buttons.
+
+## Ordering
+
+Out of the box the list keeps itself in order, top to bottom:
+
+1. **Unfinished before finished** — ticking something drops it to the bottom.
+2. **Soonest due date first** — overdue, then today, then tomorrow, and so on.
+   Anything without a date sits below everything that has one.
+3. **Priority breaks ties** — P1 before P4, but only between items sharing a
+   date. An overdue P4 therefore outranks a P1 due next week, because what is
+   due soonest is the thing a to-do list is for.
+4. **Otherwise, order of entry**, so equal items never shuffle on their own.
+
+Sub-tasks follow the same rules inside their parent.
+
+Prefer to arrange things yourself? **⋮ → Manual — drag to order** brings back
+the drag handle on every row; sub-tasks can be dragged between tasks. Switching
+to Manual keeps whatever is currently on screen, so nothing jumps — which does
+mean a manual arrangement is not remembered across a trip through automatic
+ordering and back.
 
 ## Where your data lives
 

@@ -135,6 +135,13 @@ ul{list-style:none;margin:0;padding:0}
 .menu button:hover{background:var(--hover)}
 .menu button.danger{color:var(--p1)}
 .menu hr{border:0;border-top:1px solid var(--border);margin:6px 4px}
+.menu .label{
+  padding:6px 10px 3px;font-size:11px;font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);
+}
+.menu button .ico svg{display:block}
+.menu button[aria-checked="true"]{color:var(--red)}
+.menu button[aria-checked="true"] .ico{color:var(--red)}
 .menu .ico{color:var(--text-2);display:grid;place-items:center;flex:none}
 .menu button.danger .ico{color:var(--p1)}
 
@@ -321,6 +328,8 @@ ul.subs .composer,.add-sub-composer{margin-left:0}
    Drag + hidden states
 --------------------------------------------------------------- */
 li.dragging{opacity:.4;pointer-events:none}
+/* A self-ordering list has nothing to drag. */
+body.sorted .grip{display:none}
 body.dragging-on{user-select:none;-webkit-user-select:none;cursor:grabbing}
 [data-grip]{touch-action:none}
 body.hide-done li.done{display:none}
@@ -499,7 +508,7 @@ const uid = () =>
   Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 
 function blank() {
-  return { version: 1, theme: null, hideCompleted: false, tasks: [] };
+  return { version: 1, theme: null, hideCompleted: false, sort: "smart", tasks: [] };
 }
 
 function seed() {
@@ -508,10 +517,10 @@ function seed() {
   s.tasks = [
     {
       id: uid(), title: "Welcome — tap a task to edit or delete it",
-      done: false, due: null, priority: 4, collapsed: false, createdAt: Date.now(),
+      done: false, due: null, priority: 1, collapsed: false, createdAt: Date.now(),
       subtasks: [
         { id: uid(), title: "Tick a sub-task and watch the bar fill up", done: true, due: null, priority: 4, createdAt: Date.now() },
-        { id: uid(), title: "Drag the grip to reorder anything", done: false, due: null, priority: 4, createdAt: Date.now() },
+        { id: uid(), title: "The list sorts itself — change that under \u22ee", done: false, due: null, priority: 4, createdAt: Date.now() },
         { id: uid(), title: "Dates are optional — add one only if you want", done: false, due: today, priority: 4, createdAt: Date.now() }
       ]
     },
@@ -548,6 +557,7 @@ function normalize(raw) {
   if (!raw || typeof raw !== "object") return s;
   s.theme = raw.theme === "light" || raw.theme === "dark" ? raw.theme : null;
   s.hideCompleted = !!raw.hideCompleted;
+  s.sort = raw.sort === "manual" ? "manual" : "smart";
   s.tasks = Array.isArray(raw.tasks) ? raw.tasks.map(t => normTask(t, false)) : [];
   return s;
 }
@@ -573,6 +583,10 @@ function save() {
 }
 
 let state = load();
+
+// Persist the starter list straight away, so a first run that is only read
+// and closed still leaves a defined state behind.
+try { if (!localStorage.getItem(KEY)) save(); } catch (_) {}
 
 /* Transient UI state (never persisted) */
 let ui = {
@@ -642,6 +656,36 @@ function theme() {
 }
 
 /* ===============================================================
+   Ordering
+
+   Done last, then soonest due date, then priority, and finally the order
+   the items are already in — so equal items never shuffle around on their
+   own. Undated tasks sit below dated ones rather than pretending to be due
+   today. Sorting is a view over state, never a rewrite of it, so switching
+   back to Manual restores exactly the order that was dragged.
+=============================================================== */
+function rank(item) {
+  return [
+    item.done ? 1 : 0,          // finished things sink
+    item.due ? 0 : 1,           // undated after dated
+    item.due || "",             // YYYY-MM-DD sorts chronologically as text
+    item.priority               // 1 (highest) .. 4
+  ];
+}
+
+function byRank(a, b) {
+  const ra = rank(a), rb = rank(b);
+  for (let i = 0; i < ra.length; i++) {
+    if (ra[i] < rb[i]) return -1;
+    if (ra[i] > rb[i]) return 1;
+  }
+  return 0;
+}
+
+// Array.prototype.sort is stable, so ties keep their existing order.
+const ordered = list => state.sort === "smart" ? list.slice().sort(byRank) : list;
+
+/* ===============================================================
    Render
 =============================================================== */
 const app = document.getElementById("app");
@@ -657,6 +701,8 @@ function render() {
   document.body.classList.toggle("hide-done", state.hideCompleted);
   // Match the phone's status bar to the app's own top bar.
   metaTheme.setAttribute("content", dark ? "#282828" : "#fcfaf8");
+  document.body.classList.toggle("sorted", state.sort === "smart");
+  renderMenu();
   document.body.classList.toggle("composer-open", !!ui.composer);
   document.body.classList.toggle("sheet-open", !!ui.composer && ui.composer.mode === "add");
 
@@ -681,7 +727,7 @@ function render() {
       <div>Add your first task below.</div></div>`;
   }
 
-  html += `<ul id="list">` + state.tasks.map(taskHTML).join("") + `</ul>`;
+  html += `<ul id="list">` + ordered(state.tasks).map(taskHTML).join("") + `</ul>`;
 
   html += ui.composer && ui.composer.mode === "add"
     ? composerHTML("add", "Add task")
@@ -733,7 +779,7 @@ function taskHTML(t) {
 
   return `<li class="${cls.join(" ")}" data-tid="${t.id}">
     ${head}
-    <ul class="subs">${t.subtasks.map(s => subHTML(t, s)).join("")}</ul>
+    <ul class="subs">${ordered(t.subtasks).map(s => subHTML(t, s)).join("")}</ul>
     ${addingSub
       ? `<div class="add-sub-composer" style="margin-left:24px">${composerHTML("add-sub", "Add sub-task")}</div>`
       : `<button class="add-sub" data-act="open-add-sub">
@@ -1068,6 +1114,7 @@ let drag = null;
 
 app.addEventListener("pointerdown", e => {
   if (e.pointerType === "mouse" && e.button !== 0) return;
+  if (state.sort !== "manual") return;   // the list orders itself
   const grip = e.target.closest("[data-grip]");
   if (!grip) return;
   const li = grip.closest("li");
@@ -1210,12 +1257,22 @@ document.getElementById("btnHide").addEventListener("click", () => {
 const menu = document.getElementById("menu");
 document.getElementById("btnMenu").innerHTML = ICON.dots;
 
-menu.innerHTML = `
-  <button data-m="export"><span class="ico">${ICON.download}</span>Export backup (.json)</button>
-  <button data-m="import"><span class="ico">${ICON.upload}</span>Import backup</button>
-  <hr>
-  <button data-m="clear"><span class="ico">${ICON.broom}</span>Clear completed</button>
-  <button data-m="wipe" class="danger"><span class="ico">${ICON.trash}</span>Delete everything</button>`;
+function renderMenu() {
+  const on = m => state.sort === m;
+  const mark = m => on(m) ? ICON.check : "";
+  menu.innerHTML = `
+    <div class="label">Order</div>
+    <button data-m="sort-smart" role="menuitemradio" aria-checked="${on("smart")}">
+      <span class="ico">${mark("smart")}</span>By date, then priority</button>
+    <button data-m="sort-manual" role="menuitemradio" aria-checked="${on("manual")}">
+      <span class="ico">${mark("manual")}</span>Manual — drag to order</button>
+    <hr>
+    <button data-m="export"><span class="ico">${ICON.download}</span>Export backup (.json)</button>
+    <button data-m="import"><span class="ico">${ICON.upload}</span>Import backup</button>
+    <hr>
+    <button data-m="clear"><span class="ico">${ICON.broom}</span>Clear completed</button>
+    <button data-m="wipe" class="danger"><span class="ico">${ICON.trash}</span>Delete everything</button>`;
+}
 
 function closeMenu() { menu.hidden = true; }
 
@@ -1233,6 +1290,23 @@ menu.addEventListener("click", e => {
   closeMenu();
 
   switch (b.dataset.m) {
+    case "sort-smart":
+      state.sort = "smart";
+      save();
+      render();
+      break;
+
+    case "sort-manual": {
+      // Hand manual mode the order that is on screen right now, so nothing
+      // jumps the moment you switch.
+      state.tasks = ordered(state.tasks);
+      state.tasks.forEach(t => { t.subtasks = ordered(t.subtasks); });
+      state.sort = "manual";
+      save();
+      render();
+      break;
+    }
+
     case "export": {
       const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
