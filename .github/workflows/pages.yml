@@ -1,5 +1,5 @@
 # Publishes the app to GitHub Pages on every push to the default branch.
-# Turn it on once at: Settings -> Pages -> Source -> GitHub Actions.
+# The first run switches Pages on by itself; nothing to configure by hand.
 name: Deploy to GitHub Pages
 
 on:
@@ -27,6 +27,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+        with:
+          # Creates the Pages site on first run, so there is nothing to switch
+          # on by hand. Needs the pages:write permission granted above.
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           # The whole repo is the site: index.html, the worker, the manifest
