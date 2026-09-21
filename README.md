@@ -21,13 +21,12 @@ you have open rather than quitting.
 
 Anything that serves static files over https works. Two free routes:
 
-- **GitHub Pages** — needs this repo to be public (or a paid plan). Enable it
-  at *Settings → Pages → Source → GitHub Actions*; `.github/workflows/pages.yml`
-  then publishes on every push to the default branch. The URL is
-  `https://<user>.github.io/To-Do/`.
-- **Netlify / Cloudflare Pages** — both connect to a *private* repo on their
-  free tier and give you an https URL. Point them at this repo, no build
-  command, publish directory `.`.
+This repo publishes itself to **GitHub Pages**. Enable it once at
+*Settings → Pages → Source → **GitHub Actions***; after that
+`.github/workflows/pages.yml` redeploys on every push to the default branch.
+
+The site lands at **https://justinschiltman.github.io/To-Do/** — note the
+capitals, the path is case-sensitive.
 
 ## On a computer
 
