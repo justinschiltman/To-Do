@@ -21,9 +21,11 @@ you have open rather than quitting.
 
 Anything that serves static files over https works. Two free routes:
 
-This repo publishes itself to **GitHub Pages** — `.github/workflows/pages.yml`
-switches Pages on during its first run and redeploys on every push to the
-default branch. There is nothing to configure by hand.
+This repo publishes to **GitHub Pages**. Pages has to be switched on once, by
+hand, at *Settings → Pages → Source → **GitHub Actions*** — a workflow cannot
+do it for you, because creating a Pages site needs admin rights that the
+built-in Actions token does not have. After that `.github/workflows/pages.yml`
+redeploys on every push to the default branch.
 
 The site lands at **https://justinschiltman.github.io/To-Do/** — note the
 capitals, the path is case-sensitive.
