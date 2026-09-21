@@ -45,8 +45,8 @@ or Safari's **File → Add to Dock**.
 - **Optional dates.** Shown as `Today`, `Tomorrow`, `Friday`, `3 Oct`, coloured
   red when overdue, green today, amber tomorrow.
 - **Priority flags** P1–P4, shown as the colour of the checkbox ring.
-- **Orders itself.** By default the list sorts by due date, then by priority,
-  and it re-sorts the moment anything changes. See *Ordering* below.
+- **Order tasks** manually, by date or by priority — your pick, under ⋮.
+  Sub-tasks always stay in the order you put them. See *Ordering* below.
 - **Dark mode**, following the system until you pick a side. The phone's status
   bar follows it too.
 - **Hide completed**, and **undo** on anything destructive.
@@ -56,23 +56,32 @@ hover a row for its buttons.
 
 ## Ordering
 
-Out of the box the list keeps itself in order, top to bottom:
+**⋮ → Order tasks** offers three choices, and the app remembers which one you
+picked:
 
-1. **Unfinished before finished** — ticking something drops it to the bottom.
-2. **Soonest due date first** — overdue, then today, then tomorrow, and so on.
-   Anything without a date sits below everything that has one.
-3. **Priority breaks ties** — P1 before P4, but only between items sharing a
-   date. An overdue P4 therefore outranks a P1 due next week, because what is
-   due soonest is the thing a to-do list is for.
-4. **Otherwise, order of entry**, so equal items never shuffle on their own.
+| | |
+|---|---|
+| **Manually** | Nothing moves on its own. Every row gets a drag handle. |
+| **By date** | Soonest first; undated tasks sit below dated ones. |
+| **By priority** | P1 down to P4. |
 
-Sub-tasks follow the same rules inside their parent.
+The two automatic orders share the same two extra rules: finished tasks sink to
+the bottom, and whichever key you did *not* pick settles ties — so under **By
+date**, two things due today are split by priority, and under **By priority**,
+two P1s are split by date. Equal items keep the order you entered them in, so
+nothing shuffles on its own.
 
-Prefer to arrange things yourself? **⋮ → Manual — drag to order** brings back
-the drag handle on every row; sub-tasks can be dragged between tasks. Switching
-to Manual keeps whatever is currently on screen, so nothing jumps — which does
-mean a manual arrangement is not remembered across a trip through automatic
-ordering and back.
+### Sub-tasks are different
+
+Sub-tasks are usually steps in a sequence, so they ignore the setting above and
+**stay in the order you put them** — you can always drag them, whatever the
+tasks around them are doing, and ticking one does not move it. Sub-tasks can be
+dragged from one task to another.
+
+The one exception is a **date**: give a sub-task one and it rises to the top of
+its group in date order, since a date is a firmer statement than a position.
+Those rows lose their drag handle, because their place is already decided.
+Remove the date to move it by hand again.
 
 ## Where your data lives
 

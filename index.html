@@ -140,6 +140,9 @@ ul{list-style:none;margin:0;padding:0}
   letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);
 }
 .menu button .ico svg{display:block}
+.menu .note{
+  margin:2px 10px 4px;font-size:11px;line-height:1.4;color:var(--text-3);
+}
 .menu button[aria-checked="true"]{color:var(--red)}
 .menu button[aria-checked="true"] .ico{color:var(--red)}
 .menu .ico{color:var(--text-2);display:grid;place-items:center;flex:none}
@@ -328,8 +331,6 @@ ul.subs .composer,.add-sub-composer{margin-left:0}
    Drag + hidden states
 --------------------------------------------------------------- */
 li.dragging{opacity:.4;pointer-events:none}
-/* A self-ordering list has nothing to drag. */
-body.sorted .grip{display:none}
 body.dragging-on{user-select:none;-webkit-user-select:none;cursor:grabbing}
 [data-grip]{touch-action:none}
 body.hide-done li.done{display:none}
@@ -478,6 +479,9 @@ html[data-theme="dark"] .toast button{color:#ff8b7e}
 const svg = (p, w = 16) =>
   `<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 
+const GRIP = () =>
+  `<span class="grip" data-grip title="Drag to reorder">${ICON.grip}</span>`;
+
 const ICON = {
   check:    svg('<path d="M20 6L9 17l-5-5"/>', 12),
   chevron:  svg('<path d="M6 9l6 6 6-6"/>', 16),
@@ -508,7 +512,7 @@ const uid = () =>
   Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 
 function blank() {
-  return { version: 1, theme: null, hideCompleted: false, sort: "smart", tasks: [] };
+  return { version: 1, theme: null, hideCompleted: false, sort: "date", tasks: [] };
 }
 
 function seed() {
@@ -520,7 +524,7 @@ function seed() {
       done: false, due: null, priority: 1, collapsed: false, createdAt: Date.now(),
       subtasks: [
         { id: uid(), title: "Tick a sub-task and watch the bar fill up", done: true, due: null, priority: 4, createdAt: Date.now() },
-        { id: uid(), title: "The list sorts itself — change that under \u22ee", done: false, due: null, priority: 4, createdAt: Date.now() },
+        { id: uid(), title: "Order tasks by date or priority under \u22ee", done: false, due: null, priority: 4, createdAt: Date.now() },
         { id: uid(), title: "Dates are optional — add one only if you want", done: false, due: today, priority: 4, createdAt: Date.now() }
       ]
     },
@@ -557,10 +561,13 @@ function normalize(raw) {
   if (!raw || typeof raw !== "object") return s;
   s.theme = raw.theme === "light" || raw.theme === "dark" ? raw.theme : null;
   s.hideCompleted = !!raw.hideCompleted;
-  s.sort = raw.sort === "manual" ? "manual" : "smart";
+  // "smart" was the old combined date+priority order; it lives on as "date".
+  s.sort = ["manual", "date", "priority"].includes(raw.sort) ? raw.sort : "date";
   s.tasks = Array.isArray(raw.tasks) ? raw.tasks.map(t => normTask(t, false)) : [];
   return s;
 }
+
+let loadFailed = false;
 
 function load() {
   try {
@@ -568,6 +575,7 @@ function load() {
     if (!raw) return seed();
     return normalize(JSON.parse(raw));
   } catch (e) {
+    loadFailed = true;
     console.warn("Could not read saved to-dos, starting fresh.", e);
     return blank();
   }
@@ -584,9 +592,13 @@ function save() {
 
 let state = load();
 
-// Persist the starter list straight away, so a first run that is only read
-// and closed still leaves a defined state behind.
-try { if (!localStorage.getItem(KEY)) save(); } catch (_) {}
+/* Write the canonical shape back at startup: the starter list on a first run,
+   and an older save migrated once rather than whenever the next edit happens.
+   Never overwrite something that failed to parse — it may still be
+   recoverable by hand. */
+try {
+  if (!loadFailed && localStorage.getItem(KEY) !== JSON.stringify(state)) save();
+} catch (_) {}
 
 /* Transient UI state (never persisted) */
 let ui = {
@@ -664,26 +676,35 @@ function theme() {
    today. Sorting is a view over state, never a rewrite of it, so switching
    back to Manual restores exactly the order that was dragged.
 =============================================================== */
-function rank(item) {
-  return [
-    item.done ? 1 : 0,          // finished things sink
-    item.due ? 0 : 1,           // undated after dated
-    item.due || "",             // YYYY-MM-DD sorts chronologically as text
-    item.priority               // 1 (highest) .. 4
-  ];
-}
-
-function byRank(a, b) {
-  const ra = rank(a), rb = rank(b);
-  for (let i = 0; i < ra.length; i++) {
-    if (ra[i] < rb[i]) return -1;
-    if (ra[i] > rb[i]) return 1;
+function cmpKeys(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] < b[i]) return -1;
+    if (a[i] > b[i]) return 1;
   }
   return 0;
 }
 
-// Array.prototype.sort is stable, so ties keep their existing order.
-const ordered = list => state.sort === "smart" ? list.slice().sort(byRank) : list;
+// Whichever key leads, the other one settles ties, and finished things sink.
+function taskKey(t) {
+  return state.sort === "priority"
+    ? [t.done ? 1 : 0, t.priority, t.due ? 0 : 1, t.due || ""]
+    : [t.done ? 1 : 0, t.due ? 0 : 1, t.due || "", t.priority];
+}
+
+// Array.prototype.sort is stable, so ties keep the order they are already in.
+function orderedTasks(list) {
+  if (state.sort === "manual") return list;
+  return list.slice().sort((a, b) => cmpKeys(taskKey(a), taskKey(b)));
+}
+
+/* Sub-tasks are usually steps in a sequence, so they stay in the order they
+   were put in — a date is the one thing that overrides that, floating them to
+   the top in date order. Being finished does not move a sub-task. */
+function orderedSubs(list) {
+  if (!list.some(s => s.due)) return list;
+  return list.slice().sort((a, b) =>
+    cmpKeys([a.due ? 0 : 1, a.due || ""], [b.due ? 0 : 1, b.due || ""]));
+}
 
 /* ===============================================================
    Render
@@ -701,7 +722,6 @@ function render() {
   document.body.classList.toggle("hide-done", state.hideCompleted);
   // Match the phone's status bar to the app's own top bar.
   metaTheme.setAttribute("content", dark ? "#282828" : "#fcfaf8");
-  document.body.classList.toggle("sorted", state.sort === "smart");
   renderMenu();
   document.body.classList.toggle("composer-open", !!ui.composer);
   document.body.classList.toggle("sheet-open", !!ui.composer && ui.composer.mode === "add");
@@ -727,7 +747,7 @@ function render() {
       <div>Add your first task below.</div></div>`;
   }
 
-  html += `<ul id="list">` + ordered(state.tasks).map(taskHTML).join("") + `</ul>`;
+  html += `<ul id="list">` + orderedTasks(state.tasks).map(taskHTML).join("") + `</ul>`;
 
   html += ui.composer && ui.composer.mode === "add"
     ? composerHTML("add", "Add task")
@@ -755,7 +775,7 @@ function taskHTML(t) {
 
   const head = editing ? composerHTML("edit", "Save") : `
     <div class="row">
-      <span class="grip" data-grip title="Drag to reorder">${ICON.grip}</span>
+      ${state.sort === "manual" ? GRIP() : ""}
       ${total ? `<button class="chev" data-act="collapse" title="Collapse sub-tasks">${ICON.chevron}</button>` : ""}
       <button class="check" data-act="toggle" data-p="${t.priority}"
               title="${t.done ? "Mark as not done" : "Mark as done"}"
@@ -779,7 +799,7 @@ function taskHTML(t) {
 
   return `<li class="${cls.join(" ")}" data-tid="${t.id}">
     ${head}
-    <ul class="subs">${ordered(t.subtasks).map(s => subHTML(t, s)).join("")}</ul>
+    <ul class="subs">${orderedSubs(t.subtasks).map(s => subHTML(t, s)).join("")}</ul>
     ${addingSub
       ? `<div class="add-sub-composer" style="margin-left:24px">${composerHTML("add-sub", "Add sub-task")}</div>`
       : `<button class="add-sub" data-act="open-add-sub">
@@ -797,7 +817,7 @@ function subHTML(t, s) {
   const di = dueInfo(s.due);
   return `<li class="sub${s.done ? " done" : ""}" data-sid="${s.id}">
     <div class="row">
-      <span class="grip" data-grip title="Drag to reorder">${ICON.grip}</span>
+      ${s.due ? "" : GRIP()}
       <button class="check" data-act="toggle" data-p="${s.priority}"
               title="${s.done ? "Mark as not done" : "Mark as done"}"
               aria-label="${s.done ? "Mark as not done" : "Mark as done"}">${ICON.check}</button>
@@ -1114,11 +1134,12 @@ let drag = null;
 
 app.addEventListener("pointerdown", e => {
   if (e.pointerType === "mouse" && e.button !== 0) return;
-  if (state.sort !== "manual") return;   // the list orders itself
   const grip = e.target.closest("[data-grip]");
   if (!grip) return;
   const li = grip.closest("li");
   if (!li) return;
+  // Sub-tasks are hand-ordered whatever the tasks above them are doing.
+  if (!li.classList.contains("sub") && state.sort !== "manual") return;
   e.preventDefault();
   drag = {
     el: li,
@@ -1235,7 +1256,9 @@ function commitOrder() {
   if (kept.size !== subsById.size) return;
 
   tasks.forEach(x => { x.task.subtasks = x.subs; });
-  state.tasks = tasks.map(x => x.task);
+  // In a sorted view the rows on screen are not the stored order, so only
+  // adopt them when the user is actually arranging tasks by hand.
+  if (state.sort === "manual") state.tasks = tasks.map(x => x.task);
   save();
 }
 
@@ -1259,13 +1282,16 @@ document.getElementById("btnMenu").innerHTML = ICON.dots;
 
 function renderMenu() {
   const on = m => state.sort === m;
-  const mark = m => on(m) ? ICON.check : "";
+  const opt = (m, label) => `
+    <button data-m="sort-${m}" role="menuitemradio" aria-checked="${on(m)}">
+      <span class="ico">${on(m) ? ICON.check : ""}</span>${label}</button>`;
   menu.innerHTML = `
-    <div class="label">Order</div>
-    <button data-m="sort-smart" role="menuitemradio" aria-checked="${on("smart")}">
-      <span class="ico">${mark("smart")}</span>By date, then priority</button>
-    <button data-m="sort-manual" role="menuitemradio" aria-checked="${on("manual")}">
-      <span class="ico">${mark("manual")}</span>Manual — drag to order</button>
+    <div class="label">Order tasks</div>
+    ${opt("manual", "Manually — drag to order")}
+    ${opt("date", "By date")}
+    ${opt("priority", "By priority")}
+    <p class="note">Sub-tasks always stay in the order you put them,
+      unless you give them a date.</p>
     <hr>
     <button data-m="export"><span class="ico">${ICON.download}</span>Export backup (.json)</button>
     <button data-m="import"><span class="ico">${ICON.upload}</span>Import backup</button>
@@ -1290,8 +1316,9 @@ menu.addEventListener("click", e => {
   closeMenu();
 
   switch (b.dataset.m) {
-    case "sort-smart":
-      state.sort = "smart";
+    case "sort-date":
+    case "sort-priority":
+      state.sort = b.dataset.m.slice(5);
       save();
       render();
       break;
@@ -1299,8 +1326,7 @@ menu.addEventListener("click", e => {
     case "sort-manual": {
       // Hand manual mode the order that is on screen right now, so nothing
       // jumps the moment you switch.
-      state.tasks = ordered(state.tasks);
-      state.tasks.forEach(t => { t.subtasks = ordered(t.subtasks); });
+      state.tasks = orderedTasks(state.tasks);
       state.sort = "manual";
       save();
       render();
