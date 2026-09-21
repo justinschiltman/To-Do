@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>To-Do</title>
+<style>
+/* ---------------------------------------------------------------
+   Palette — Todoist-flavoured
+--------------------------------------------------------------- */
+:root{
+  --red:#dc4c3e;
+  --red-hover:#c3402f;
+  --bg:#ffffff;
+  --bg-alt:#fcfaf8;
+  --surface:#ffffff;
+  --text:#202020;
+  --text-2:#808080;
+  --text-3:#a0a0a0;
+  --border:#f0f0f0;
+  --border-2:#dddddd;
+  --hover:#f5f5f5;
+  --hover-2:#eeeeee;
+
+  --p1:#d1453b;  --p1-bg:#fdeceb;
+  --p2:#eb8909;  --p2-bg:#fdf3e6;
+  --p3:#246fe0;  --p3-bg:#eaf1fd;
+  --p4:#999999;  --p4-bg:#f0f0f0;
+
+  --due-over:#d1453b;
+  --due-today:#058527;
+  --due-tom:#ad6200;
+  --due-future:#808080;
+
+  --done:#058527;
+  --shadow:0 2px 8px rgba(0,0,0,.10);
+  --shadow-lg:0 6px 24px rgba(0,0,0,.14);
+}
+html[data-theme="dark"]{
+  --bg:#1f1f1f;
+  --bg-alt:#282828;
+  --surface:#282828;
+  --text:#e6e6e6;
+  --text-2:#a8a8a8;
+  --text-3:#8a8a8a;
+  --border:#333333;
+  --border-2:#444444;
+  --hover:#2c2c2c;
+  --hover-2:#363636;
+
+  --p1:#e0554a;  --p1-bg:#3a2523;
+  --p2:#e8a33d;  --p2-bg:#3a2e1d;
+  --p3:#4b8ee8;  --p3-bg:#1f2c40;
+  --p4:#8a8a8a;  --p4-bg:#333333;
+
+  --due-over:#e0554a;
+  --due-today:#4caf6d;
+  --due-tom:#d8993f;
+  --due-future:#a8a8a8;
+
+  --done:#4caf6d;
+  --shadow:0 2px 10px rgba(0,0,0,.45);
+  --shadow-lg:0 8px 28px rgba(0,0,0,.55);
+}
+
+/* ---------------------------------------------------------------
+   Base
+--------------------------------------------------------------- */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,"Helvetica Neue",Arial,sans-serif;
+  font-size:14px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+ul{list-style:none;margin:0;padding:0}
+::selection{background:rgba(220,76,62,.22)}
+
+/* ---------------------------------------------------------------
+   Top bar
+--------------------------------------------------------------- */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;height:48px;padding:0 14px;
+  background:var(--bg-alt);
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:8px}
+.brand .mark{
+  width:22px;height:22px;border-radius:6px;background:var(--red);
+  display:grid;place-items:center;color:#fff;flex:none;
+}
+.tools{display:flex;align-items:center;gap:2px}
+.icon-btn{
+  width:32px;height:32px;border-radius:6px;
+  display:grid;place-items:center;color:var(--text-2);
+}
+.icon-btn:hover{background:var(--hover-2);color:var(--text)}
+.icon-btn.on{color:var(--red)}
+
+/* Menu */
+.menu-wrap{position:relative}
+.menu{
+  position:absolute;right:0;top:36px;min-width:210px;
+  background:var(--surface);border:1px solid var(--border-2);
+  border-radius:10px;box-shadow:var(--shadow-lg);padding:6px;z-index:50;
+}
+.menu[hidden]{display:none}
+.menu button{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:8px 10px;border-radius:6px;text-align:left;color:var(--text);
+}
+.menu button:hover{background:var(--hover)}
+.menu button.danger{color:var(--p1)}
+.menu hr{border:0;border-top:1px solid var(--border);margin:6px 4px}
+.menu .ico{color:var(--text-2);display:grid;place-items:center;flex:none}
+.menu button.danger .ico{color:var(--p1)}
+
+/* ---------------------------------------------------------------
+   Page
+--------------------------------------------------------------- */
+main{max-width:720px;margin:0 auto;padding:28px 24px 120px}
+.page-head{margin:0 0 14px}
+.page-head h1{margin:0;font-size:20px;letter-spacing:-.02em}
+.page-head .count{margin:2px 0 0;font-size:12px;color:var(--text-2)}
+
+/* ---------------------------------------------------------------
+   Task rows
+--------------------------------------------------------------- */
+li.task{border-bottom:1px solid var(--border)}
+li.task:first-child{border-top:1px solid var(--border)}
+
+.row{
+  position:relative;
+  display:flex;align-items:flex-start;gap:8px;
+  padding:9px 0 9px 22px;
+}
+li.sub .row{padding-top:7px;padding-bottom:7px}
+.row:hover .grip,.row:hover .actions{opacity:1}
+
+.grip{
+  position:absolute;left:-20px;top:9px;
+  width:18px;height:20px;display:grid;place-items:center;
+  color:var(--text-3);opacity:0;cursor:grab;transition:opacity .12s;
+}
+li.sub .grip{top:7px}
+.grip:active{cursor:grabbing}
+
+.chev{
+  position:absolute;left:-2px;top:10px;
+  width:22px;height:22px;display:grid;place-items:center;
+  color:var(--text-2);border-radius:4px;transition:transform .15s;
+}
+.chev:hover{background:var(--hover-2)}
+li.task.collapsed > .row .chev{transform:rotate(-90deg)}
+
+/* Checkbox */
+.check{
+  flex:none;width:20px;height:20px;margin-top:1px;border-radius:50%;
+  border:1.5px solid var(--p4);
+  display:grid;place-items:center;color:transparent;transition:background .12s,color .12s;
+}
+li.sub .check{width:18px;height:18px}
+.check svg{width:12px;height:12px}
+.check[data-p="1"]{border-color:var(--p1)}
+.check[data-p="2"]{border-color:var(--p2)}
+.check[data-p="3"]{border-color:var(--p3)}
+.check:hover{color:var(--text-2)}
+.check[data-p="1"]:hover{background:var(--p1-bg)}
+.check[data-p="2"]:hover{background:var(--p2-bg)}
+.check[data-p="3"]:hover{background:var(--p3-bg)}
+.check[data-p="4"]:hover{background:var(--p4-bg)}
+.done > .row > .check,
+li.done > .row > .check{color:#fff;background:var(--p4);border-color:var(--p4)}
+li.done > .row > .check[data-p="1"]{background:var(--p1);border-color:var(--p1)}
+li.done > .row > .check[data-p="2"]{background:var(--p2);border-color:var(--p2)}
+li.done > .row > .check[data-p="3"]{background:var(--p3);border-color:var(--p3)}
+
+/* Body */
+.body{flex:1;min-width:0}
+.title{
+  word-break:break-word;white-space:pre-wrap;cursor:text;
+  padding:1px 0;
+}
+li.done > .row > .body > .title{color:var(--text-2);text-decoration:line-through}
+
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:2px}
+.due{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--due-future)}
+.due svg{width:12px;height:12px}
+.due.over{color:var(--due-over)}
+.due.today{color:var(--due-today)}
+.due.tom{color:var(--due-tom)}
+li.done .due{color:var(--text-3) !important}
+
+/* Progress */
+.progress{display:flex;align-items:center;gap:8px;margin-top:7px;max-width:320px}
+.bar{flex:1;height:4px;border-radius:999px;background:var(--border);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--red);transition:width .22s ease}
+.bar.full i{background:var(--done)}
+.progress .num{font-size:11px;color:var(--text-2);font-variant-numeric:tabular-nums;flex:none}
+
+/* Row actions */
+.actions{display:flex;align-items:center;gap:1px;opacity:0;transition:opacity .12s;flex:none}
+.act{width:26px;height:26px;border-radius:5px;display:grid;place-items:center;color:var(--text-2)}
+.act:hover{background:var(--hover-2);color:var(--text)}
+.act.del:hover{color:var(--p1)}
+
+/* Sub-tasks */
+ul.subs{padding-left:24px}
+li.sub{border-top:1px solid var(--border)}
+li.task.collapsed > ul.subs,
+li.task.collapsed > .add-sub{display:none}
+body.dragging-sub ul.subs{min-height:22px}
+
+.add-sub{
+  display:flex;align-items:center;gap:8px;
+  margin-left:46px;padding:6px 0 8px;color:var(--text-2);font-size:13px;
+}
+li.task:not(.has-subs) > .add-sub{display:none}
+.add-sub:hover{color:var(--red)}
+.add-sub .plus{width:16px;height:16px;display:grid;place-items:center;color:var(--red)}
+
+/* Add task button */
+.add-task{
+  display:flex;align-items:center;gap:10px;
+  width:100%;padding:10px 0 10px 2px;margin-top:4px;
+  color:var(--text-2);
+}
+.add-task:hover{color:var(--red)}
+.add-task .plus{
+  width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+  color:var(--red);flex:none;transition:background .12s,color .12s;
+}
+.add-task:hover .plus{background:var(--red);color:#fff}
+
+/* ---------------------------------------------------------------
+   Composer
+--------------------------------------------------------------- */
+.composer{
+  background:var(--surface);
+  border:1px solid var(--border-2);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  margin:8px 0;
+  overflow:hidden;
+}
+ul.subs .composer,.add-sub-composer{margin-left:0}
+.composer .c-main{padding:10px 12px 4px}
+.c-title{
+  width:100%;border:0;background:none;outline:none;padding:2px 0;
+  font-size:14px;font-weight:500;
+}
+.c-title::placeholder{color:var(--text-3);font-weight:400}
+.c-chips{display:flex;flex-wrap:wrap;gap:6px;padding:6px 12px 10px}
+.chip{
+  position:relative;display:inline-flex;align-items:center;gap:5px;
+  height:26px;padding:0 8px;border:1px solid var(--border-2);border-radius:6px;
+  font-size:12px;color:var(--text-2);cursor:pointer;background:var(--bg);
+}
+.chip:hover{background:var(--hover)}
+.chip svg{width:13px;height:13px}
+.chip input,.chip select{
+  position:absolute;inset:0;width:100%;height:100%;
+  opacity:0;cursor:pointer;border:0;
+}
+.chip.set{color:var(--text)}
+.chip.d-over{color:var(--due-over);border-color:currentColor}
+.chip.d-today{color:var(--due-today);border-color:currentColor}
+.chip.d-tom{color:var(--due-tom);border-color:currentColor}
+.chip.d-future{color:var(--text);border-color:var(--border-2)}
+.chip.p1{color:var(--p1);border-color:currentColor}
+.chip.p2{color:var(--p2);border-color:currentColor}
+.chip.p3{color:var(--p3);border-color:currentColor}
+.chip .x{position:relative;z-index:2;display:grid;place-items:center;width:14px;height:14px;border-radius:3px;color:var(--text-2)}
+.chip .x:hover{background:var(--hover-2);color:var(--text)}
+
+.c-actions{
+  display:flex;justify-content:flex-end;gap:8px;
+  padding:9px 12px;border-top:1px solid var(--border);background:var(--bg-alt);
+}
+.btn{height:32px;padding:0 14px;border-radius:6px;font-size:13px;font-weight:500}
+.btn.primary{background:var(--red);color:#fff}
+.btn.primary:hover{background:var(--red-hover)}
+.btn.primary:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:var(--hover-2);color:var(--text)}
+.btn.ghost:hover{background:var(--border-2)}
+
+/* ---------------------------------------------------------------
+   Empty state
+--------------------------------------------------------------- */
+.empty{text-align:center;padding:46px 20px 30px;color:var(--text-2)}
+.empty .big{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.empty svg{width:64px;height:64px;color:var(--border-2);margin-bottom:10px}
+
+/* ---------------------------------------------------------------
+   Drag + hidden states
+--------------------------------------------------------------- */
+li.dragging{opacity:.4;pointer-events:none}
+body.dragging-on{user-select:none;-webkit-user-select:none;cursor:grabbing}
+[data-grip]{touch-action:none}
+body.hide-done li.done{display:none}
+li.task.filtered-out{display:none}
+
+/* ---------------------------------------------------------------
+   Toast
+--------------------------------------------------------------- */
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);
+  display:flex;align-items:center;gap:16px;
+  background:#1f1f1f;color:#fff;font-size:13px;
+  padding:10px 12px 10px 16px;border-radius:8px;box-shadow:var(--shadow-lg);
+  opacity:0;pointer-events:none;transition:opacity .16s,transform .16s;z-index:60;
+}
+html[data-theme="dark"] .toast{background:#3a3a3a}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{color:var(--red);font-weight:600;padding:2px 6px;border-radius:4px}
+html[data-theme="dark"] .toast button{color:#ff8b7e}
+.toast button:hover{text-decoration:underline}
+
+:focus-visible{outline:2px solid var(--p3);outline-offset:2px;border-radius:4px}
+.c-title:focus-visible{outline:none}
+.check:focus-visible{outline-offset:3px}
+
+@media (max-width:560px){
+  main{padding:20px 22px 100px}
+  .grip,.actions{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </span>
+  </div>
+  <div class="tools">
+    <button class="icon-btn" id="btnHide" title="Show/hide completed"></button>
+    <button class="icon-btn" id="btnTheme" title="Toggle dark mode"></button>
+    <div class="menu-wrap">
+      <button class="icon-btn" id="btnMenu" title="More" aria-haspopup="true"></button>
+      <div class="menu" id="menu" hidden></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="page-head">
+    <h1>To-Do</h1>
+    <p class="count" id="count"></p>
+  </div>
+  <div id="app"></div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span id="toastMsg"></span>
+  <button id="toastUndo" type="button">Undo</button>
+</div>
+
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+"use strict";
+
+/* ===============================================================
+   Icons
+=============================================================== */
+const svg = (p, w = 16) =>
+  `<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+
+const ICON = {
+  check:    svg('<path d="M20 6L9 17l-5-5"/>', 12),
+  chevron:  svg('<path d="M6 9l6 6 6-6"/>', 16),
+  plus:     svg('<path d="M12 5v14M5 12h14"/>', 15),
+  pencil:   svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>', 14),
+  trash:    svg('<path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/>', 14),
+  calendar: svg('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>', 13),
+  flag:     svg('<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V4"/>', 13),
+  sun:      svg('<circle cx="12" cy="12" r="4.5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>', 17),
+  moon:     svg('<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>', 17),
+  eye:      svg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>', 17),
+  eyeOff:   svg('<path d="M17.9 17.9A10.4 10.4 0 0112 20c-7 0-11-8-11-8a18.4 18.4 0 015.1-5.9M9.9 4.2A10.1 10.1 0 0112 4c7 0 11 8 11 8a18.4 18.4 0 01-2.2 3.2M1 1l22 22"/>', 17),
+  dots:     svg('<circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/>', 17),
+  grip:     '<svg viewBox="0 0 10 16" width="10" height="16" fill="currentColor"><circle cx="2" cy="3" r="1.3"/><circle cx="8" cy="3" r="1.3"/><circle cx="2" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="2" cy="13" r="1.3"/><circle cx="8" cy="13" r="1.3"/></svg>',
+  x:        svg('<path d="M18 6L6 18M6 6l12 12"/>', 11),
+  download: svg('<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>', 15),
+  upload:   svg('<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>', 15),
+  broom:    svg('<path d="M20 4L9 15"/><path d="M14.5 9.5L4 20l4 0 2-2"/><path d="M10 14l4 4"/>', 15),
+  empty:    svg('<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M8 12h8M8 16h5"/>', 64)
+};
+
+/* ===============================================================
+   State
+=============================================================== */
+const KEY = "todo.app.v1";
+
+const uid = () =>
+  Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+
+function blank() {
+  return { version: 1, theme: null, hideCompleted: false, tasks: [] };
+}
+
+function seed() {
+  const s = blank();
+  const today = ymd(new Date());
+  s.tasks = [
+    {
+      id: uid(), title: "Welcome — this list is yours, delete these when you like",
+      done: false, due: null, priority: 4, collapsed: false, createdAt: Date.now(),
+      subtasks: [
+        { id: uid(), title: "Tick a sub-task and watch the bar below fill up", done: true, due: null, priority: 4, createdAt: Date.now() },
+        { id: uid(), title: "Hover a row for the grip, edit and delete buttons", done: false, due: null, priority: 4, createdAt: Date.now() },
+        { id: uid(), title: "Dates are optional — add one only if you want", done: false, due: today, priority: 4, createdAt: Date.now() }
+      ]
+    },
+    {
+      id: uid(), title: "Try the priority flags when adding a task",
+      done: false, due: null, priority: 2, collapsed: false, createdAt: Date.now(), subtasks: []
+    },
+    {
+      id: uid(), title: "Everything saves automatically in this browser",
+      done: false, due: null, priority: 4, collapsed: false, createdAt: Date.now(), subtasks: []
+    }
+  ];
+  return s;
+}
+
+function normTask(t, isSub) {
+  const o = {
+    id: typeof t.id === "string" && t.id ? t.id : uid(),
+    title: String(t.title == null ? "" : t.title),
+    done: !!t.done,
+    due: typeof t.due === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : null,
+    priority: [1, 2, 3, 4].includes(Number(t.priority)) ? Number(t.priority) : 4,
+    createdAt: Number(t.createdAt) || Date.now()
+  };
+  if (!isSub) {
+    o.collapsed = !!t.collapsed;
+    o.subtasks = Array.isArray(t.subtasks) ? t.subtasks.map(s => normTask(s, true)) : [];
+  }
+  return o;
+}
+
+function normalize(raw) {
+  const s = blank();
+  if (!raw || typeof raw !== "object") return s;
+  s.theme = raw.theme === "light" || raw.theme === "dark" ? raw.theme : null;
+  s.hideCompleted = !!raw.hideCompleted;
+  s.tasks = Array.isArray(raw.tasks) ? raw.tasks.map(t => normTask(t, false)) : [];
+  return s;
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return seed();
+    return normalize(JSON.parse(raw));
+  } catch (e) {
+    console.warn("Could not read saved to-dos, starting fresh.", e);
+    return blank();
+  }
+}
+
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error("Could not save.", e);
+    flash("Could not save — browser storage is full or blocked.", null);
+  }
+}
+
+let state = load();
+
+/* Transient UI state (never persisted) */
+let ui = {
+  composer: null,   // {mode:'add'|'add-sub'|'edit', taskId?, subId?}
+  draft: null,      // {title, due, priority}
+  dragging: false
+};
+
+/* When we set the draft in code it must win over whatever the (now stale)
+   composer still has in the DOM, so the next render must not snapshot. */
+let draftIsFresh = false;
+function setDraft(d) { ui.draft = d; draftIsFresh = true; }
+const emptyDraft = () => ({ title: "", due: null, priority: 4 });
+
+/* ===============================================================
+   Lookups
+=============================================================== */
+const findTask = id => state.tasks.find(t => t.id === id) || null;
+function findSub(taskId, subId) {
+  const t = findTask(taskId);
+  return t ? t.subtasks.find(s => s.id === subId) || null : null;
+}
+
+/* ===============================================================
+   Dates
+=============================================================== */
+function ymd(d) {
+  return d.getFullYear() + "-" +
+    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+    String(d.getDate()).padStart(2, "0");
+}
+function parseYmd(s) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function niceDate(d) {
+  const now = new Date();
+  const opts = d.getFullYear() === now.getFullYear()
+    ? { day: "numeric", month: "short" }
+    : { day: "numeric", month: "short", year: "numeric" };
+  return d.toLocaleDateString(undefined, opts);
+}
+function dueInfo(due) {
+  if (!due) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = parseYmd(due);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff < 0)  return { cls: "over",   label: diff === -1 ? "Yesterday" : niceDate(d) };
+  if (diff === 0) return { cls: "today",  label: "Today" };
+  if (diff === 1) return { cls: "tom",    label: "Tomorrow" };
+  if (diff < 7)   return { cls: "future", label: d.toLocaleDateString(undefined, { weekday: "long" }) };
+  return { cls: "future", label: niceDate(d) };
+}
+
+/* ===============================================================
+   Helpers
+=============================================================== */
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+const PRIO_LABEL = { 1: "Priority 1", 2: "Priority 2", 3: "Priority 3", 4: "Priority 4" };
+
+function theme() {
+  if (state.theme) return state.theme;
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+/* ===============================================================
+   Render
+=============================================================== */
+const app = document.getElementById("app");
+
+function render() {
+  if (ui.dragging) return;
+  if (draftIsFresh) draftIsFresh = false;
+  else snapshotComposer();
+
+  document.documentElement.dataset.theme = theme();
+  document.body.classList.toggle("hide-done", state.hideCompleted);
+
+  document.getElementById("btnTheme").innerHTML = theme() === "dark" ? ICON.sun : ICON.moon;
+  const hideBtn = document.getElementById("btnHide");
+  hideBtn.innerHTML = state.hideCompleted ? ICON.eyeOff : ICON.eye;
+  hideBtn.classList.toggle("on", state.hideCompleted);
+  hideBtn.title = state.hideCompleted ? "Show completed tasks" : "Hide completed tasks";
+
+  const open = state.tasks.filter(t => !t.done).length;
+  const doneN = state.tasks.length - open;
+  document.getElementById("count").textContent =
+    (open === 0 ? (state.tasks.length ? "All done" : "No tasks yet")
+                : open + (open === 1 ? " task" : " tasks")) +
+    (doneN ? "  ·  " + doneN + " completed" : "");
+
+  let html = "";
+
+  if (!state.tasks.length && ui.composer?.mode !== "add") {
+    html += `<div class="empty">${ICON.empty}
+      <div class="big">Nothing on the list</div>
+      <div>Add your first task below.</div></div>`;
+  }
+
+  html += `<ul id="list">` + state.tasks.map(taskHTML).join("") + `</ul>`;
+
+  html += ui.composer && ui.composer.mode === "add"
+    ? composerHTML("add", "Add task")
+    : `<button class="add-task" data-act="open-add">
+         <span class="plus">${ICON.plus}</span><span>Add task</span>
+       </button>`;
+
+  app.innerHTML = html;
+  hydrateComposer();
+}
+
+function taskHTML(t) {
+  const editing = ui.composer && ui.composer.mode === "edit" &&
+                  ui.composer.taskId === t.id && !ui.composer.subId;
+
+  const total = t.subtasks.length;
+  const doneN = t.subtasks.filter(s => s.done).length;
+  const pct = total ? Math.round((doneN / total) * 100) : 0;
+  const di = dueInfo(t.due);
+
+  const cls = ["task"];
+  if (t.done) cls.push("done");
+  if (total) cls.push("has-subs");
+  if (t.collapsed) cls.push("collapsed");
+
+  const head = editing ? composerHTML("edit", "Save") : `
+    <div class="row">
+      <span class="grip" data-grip title="Drag to reorder">${ICON.grip}</span>
+      ${total ? `<button class="chev" data-act="collapse" title="Collapse sub-tasks">${ICON.chevron}</button>` : ""}
+      <button class="check" data-act="toggle" data-p="${t.priority}"
+              title="${t.done ? "Mark as not done" : "Mark as done"}"
+              aria-label="${t.done ? "Mark as not done" : "Mark as done"}">${ICON.check}</button>
+      <div class="body">
+        <div class="title" data-act="edit">${esc(t.title)}</div>
+        ${di ? `<div class="meta"><span class="due ${di.cls}">${ICON.calendar}${esc(di.label)}</span></div>` : ""}
+        ${total ? `<div class="progress" title="${doneN} of ${total} sub-tasks done">
+            <div class="bar${doneN === total ? " full" : ""}"><i style="width:${pct}%"></i></div>
+            <span class="num">${doneN}/${total}</span>
+          </div>` : ""}
+      </div>
+      <div class="actions">
+        <button class="act" data-act="open-add-sub" title="Add sub-task">${ICON.plus}</button>
+        <button class="act" data-act="edit" title="Edit task">${ICON.pencil}</button>
+        <button class="act del" data-act="delete" title="Delete task">${ICON.trash}</button>
+      </div>
+    </div>`;
+
+  const addingSub = ui.composer && ui.composer.mode === "add-sub" && ui.composer.taskId === t.id;
+
+  return `<li class="${cls.join(" ")}" data-tid="${t.id}">
+    ${head}
+    <ul class="subs">${t.subtasks.map(s => subHTML(t, s)).join("")}</ul>
+    ${addingSub
+      ? `<div class="add-sub-composer" style="margin-left:24px">${composerHTML("add-sub", "Add sub-task")}</div>`
+      : `<button class="add-sub" data-act="open-add-sub">
+           <span class="plus">${ICON.plus}</span><span>Add sub-task</span>
+         </button>`}
+  </li>`;
+}
+
+function subHTML(t, s) {
+  const editing = ui.composer && ui.composer.mode === "edit" &&
+                  ui.composer.taskId === t.id && ui.composer.subId === s.id;
+  if (editing) {
+    return `<li class="sub" data-sid="${s.id}">${composerHTML("edit", "Save")}</li>`;
+  }
+  const di = dueInfo(s.due);
+  return `<li class="sub${s.done ? " done" : ""}" data-sid="${s.id}">
+    <div class="row">
+      <span class="grip" data-grip title="Drag to reorder">${ICON.grip}</span>
+      <button class="check" data-act="toggle" data-p="${s.priority}"
+              title="${s.done ? "Mark as not done" : "Mark as done"}"
+              aria-label="${s.done ? "Mark as not done" : "Mark as done"}">${ICON.check}</button>
+      <div class="body">
+        <div class="title" data-act="edit">${esc(s.title)}</div>
+        ${di ? `<div class="meta"><span class="due ${di.cls}">${ICON.calendar}${esc(di.label)}</span></div>` : ""}
+      </div>
+      <div class="actions">
+        <button class="act" data-act="edit" title="Edit sub-task">${ICON.pencil}</button>
+        <button class="act del" data-act="delete" title="Delete sub-task">${ICON.trash}</button>
+      </div>
+    </div>
+  </li>`;
+}
+
+function composerHTML(mode, submitLabel) {
+  const d = ui.draft || { title: "", due: null, priority: 4 };
+  const di = dueInfo(d.due);
+  const placeholder = mode === "add-sub" ? "Sub-task name" : "Task name";
+
+  return `<form class="composer" data-composer>
+    <div class="c-main">
+      <input class="c-title" type="text" placeholder="${placeholder}"
+             value="${esc(d.title)}" autocomplete="off" spellcheck="true">
+    </div>
+    <div class="c-chips">
+      <label class="chip d-${di ? di.cls : "none"}${d.due ? " set" : ""}" data-datechip>
+        ${ICON.calendar}<span>${di ? esc(di.label) : "Due date"}</span>
+        <input type="date" class="c-date" value="${d.due || ""}" aria-label="Due date">
+        ${d.due ? `<span class="x" data-act="clear-date" title="Remove due date">${ICON.x}</span>` : ""}
+      </label>
+      <label class="chip${d.priority < 4 ? " p" + d.priority : ""}">
+        ${ICON.flag}<span>${d.priority < 4 ? "P" + d.priority : "Priority"}</span>
+        <select class="c-prio" aria-label="Priority">
+          ${[1, 2, 3, 4].map(p =>
+            `<option value="${p}"${p === d.priority ? " selected" : ""}>${PRIO_LABEL[p]}</option>`).join("")}
+        </select>
+      </label>
+    </div>
+    <div class="c-actions">
+      <button type="button" class="btn ghost" data-act="cancel">Cancel</button>
+      <button type="submit" class="btn primary">${submitLabel}</button>
+    </div>
+  </form>`;
+}
+
+/* Keep the in-progress draft alive across re-renders */
+function snapshotComposer() {
+  const f = document.querySelector("[data-composer]");
+  if (!f || !ui.composer) return;
+  ui.draft = {
+    title: f.querySelector(".c-title").value,
+    due: f.querySelector(".c-date").value || null,
+    priority: Number(f.querySelector(".c-prio").value) || 4
+  };
+}
+
+function hydrateComposer() {
+  const f = document.querySelector("[data-composer]");
+  if (!f) return;
+  const input = f.querySelector(".c-title");
+  input.focus();
+  const v = input.value;
+  input.setSelectionRange(v.length, v.length);
+  f.scrollIntoView({ block: "nearest" });
+}
+
+/* ===============================================================
+   Composer actions
+=============================================================== */
+function openComposer(composer, draft) {
+  ui.composer = composer;
+  setDraft(draft || emptyDraft());
+  render();
+}
+function closeComposer() {
+  ui.composer = null;
+  ui.draft = null;
+  render();
+}
+
+function submitComposer(form) {
+  snapshotComposer();
+  const c = ui.composer;
+  const d = ui.draft;
+  if (!c) return;
+
+  const title = (d.title || "").trim();
+
+  if (c.mode === "edit") {
+    const item = c.subId ? findSub(c.taskId, c.subId) : findTask(c.taskId);
+    if (item) {
+      if (title) item.title = title;
+      item.due = d.due;
+      item.priority = d.priority;
+      save();
+    }
+    closeComposer();
+    return;
+  }
+
+  if (!title) { closeComposer(); return; }
+
+  if (c.mode === "add") {
+    state.tasks.push({
+      id: uid(), title, done: false, due: d.due, priority: d.priority,
+      collapsed: false, createdAt: Date.now(), subtasks: []
+    });
+  } else if (c.mode === "add-sub") {
+    const t = findTask(c.taskId);
+    if (!t) { closeComposer(); return; }
+    t.collapsed = false;
+    t.subtasks.push({
+      id: uid(), title, done: false, due: d.due, priority: d.priority, createdAt: Date.now()
+    });
+  }
+
+  save();
+  // Keep the composer open so several items can be typed in a row.
+  setDraft(emptyDraft());
+  render();
+}
+
+/* ===============================================================
+   Undo
+=============================================================== */
+let undoSnap = null, toastTimer = null;
+const toast = document.getElementById("toast");
+const toastMsg = document.getElementById("toastMsg");
+const toastUndo = document.getElementById("toastUndo");
+
+function flash(msg, snapshot) {
+  undoSnap = snapshot;
+  toastMsg.textContent = msg;
+  toastUndo.hidden = !snapshot;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 7000);
+}
+function withUndo(msg) {
+  flash(msg, JSON.stringify(state));
+}
+toastUndo.addEventListener("click", () => {
+  if (!undoSnap) return;
+  state = normalize(JSON.parse(undoSnap));
+  undoSnap = null;
+  save();
+  toast.classList.remove("show");
+  render();
+});
+
+/* ===============================================================
+   Click handling
+=============================================================== */
+app.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  const taskEl = el.closest("li.task");
+  const subEl = el.closest("li.sub");
+  const taskId = taskEl ? taskEl.dataset.tid : null;
+  const subId = subEl ? subEl.dataset.sid : null;
+
+  switch (act) {
+    case "open-add":
+      openComposer({ mode: "add" });
+      break;
+
+    case "open-add-sub":
+      openComposer({ mode: "add-sub", taskId });
+      break;
+
+    case "edit": {
+      // Let the user select text in a title without the editor snapping open.
+      const sel = window.getSelection && window.getSelection();
+      if (el.classList.contains("title") && sel && !sel.isCollapsed) return;
+      const item = subId ? findSub(taskId, subId) : findTask(taskId);
+      if (!item) return;
+      openComposer({ mode: "edit", taskId, subId },
+        { title: item.title, due: item.due, priority: item.priority });
+      break;
+    }
+
+    case "toggle": {
+      const item = subId ? findSub(taskId, subId) : findTask(taskId);
+      if (!item) return;
+      item.done = !item.done;
+      save();
+      render();
+      break;
+    }
+
+    case "collapse": {
+      const t = findTask(taskId);
+      if (!t) return;
+      t.collapsed = !t.collapsed;
+      save();
+      render();
+      break;
+    }
+
+    case "delete": {
+      if (subId) {
+        const t = findTask(taskId);
+        if (!t) return;
+        const s = findSub(taskId, subId);
+        withUndo(`Sub-task deleted`);
+        t.subtasks = t.subtasks.filter(x => x.id !== subId);
+      } else {
+        const t = findTask(taskId);
+        if (!t) return;
+        withUndo(t.subtasks.length
+          ? `Task and ${t.subtasks.length} sub-task${t.subtasks.length > 1 ? "s" : ""} deleted`
+          : `Task deleted`);
+        state.tasks = state.tasks.filter(x => x.id !== taskId);
+      }
+      if (ui.composer && ui.composer.taskId === taskId) { ui.composer = null; ui.draft = null; }
+      save();
+      render();
+      break;
+    }
+
+    case "cancel":
+      closeComposer();
+      break;
+
+    case "clear-date": {
+      e.preventDefault();
+      e.stopPropagation();
+      snapshotComposer();
+      setDraft(Object.assign({}, ui.draft, { due: null }));
+      render();
+      break;
+    }
+  }
+});
+
+/* Composer: submit, live chip updates, keyboard */
+app.addEventListener("submit", e => {
+  if (e.target.matches("[data-composer]")) {
+    e.preventDefault();
+    submitComposer(e.target);
+  }
+});
+
+app.addEventListener("change", e => {
+  if (e.target.matches(".c-date") || e.target.matches(".c-prio")) {
+    render();   // render() snapshots the composer, picking the new value up
+  }
+});
+
+app.addEventListener("keydown", e => {
+  if (!e.target.matches(".c-title")) return;
+  if (e.key === "Escape") { e.preventDefault(); closeComposer(); }
+});
+
+/* Native date picker on chip click (Chrome/Edge) */
+app.addEventListener("click", e => {
+  const chip = e.target.closest("[data-datechip]");
+  if (!chip || e.target.closest("[data-act]")) return;
+  const input = chip.querySelector(".c-date");
+  if (input && input !== e.target && typeof input.showPicker === "function") {
+    try { input.showPicker(); } catch (_) { /* already open / unsupported */ }
+  }
+});
+
+/* Escape closes the composer from anywhere */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    if (!document.getElementById("menu").hidden) { closeMenu(); return; }
+    if (ui.composer) closeComposer();
+  }
+});
+
+/* ===============================================================
+   Drag to reorder  (pointer based, so it works with a mouse and on touch)
+=============================================================== */
+let drag = null;
+
+app.addEventListener("pointerdown", e => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  const grip = e.target.closest("[data-grip]");
+  if (!grip) return;
+  const li = grip.closest("li");
+  if (!li) return;
+  e.preventDefault();
+  drag = {
+    el: li,
+    kind: li.classList.contains("sub") ? "sub" : "task",
+    startY: e.clientY,
+    pointerId: e.pointerId,
+    active: false
+  };
+});
+
+// Tracked on the document rather than with setPointerCapture: capture is
+// released the moment the row under the cursor changes, which kills the drag.
+document.addEventListener("pointermove", e => {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  e.preventDefault();
+  if (!drag.active) {
+    if (Math.abs(e.clientY - drag.startY) < 4) return;   // ignore a plain click
+    drag.active = true;
+    ui.dragging = true;                                   // freeze re-renders
+    drag.el.classList.add("dragging");
+    document.body.classList.add("dragging-on");
+    if (drag.kind === "sub") document.body.classList.add("dragging-sub");
+  }
+  moveDragged(e.clientX, e.clientY);
+});
+
+["pointerup", "pointercancel"].forEach(evt =>
+  document.addEventListener(evt, e => {
+    if (!drag || (e.pointerId != null && e.pointerId !== drag.pointerId)) return;
+    endDrag();
+  }));
+window.addEventListener("blur", endDrag);
+
+function endDrag() {
+  const d = drag;
+  drag = null;
+  if (!d) return;
+  d.el.classList.remove("dragging");
+  document.body.classList.remove("dragging-on", "dragging-sub");
+  ui.dragging = false;
+  if (d.active) { commitOrder(); render(); }
+}
+
+function moveDragged(x, y) {
+  const el = drag.el;
+
+  if (drag.kind === "task") {
+    const list = document.getElementById("list");
+    if (!list) return;
+    const after = afterElement(list, "li.task", y);
+    if (after == null) list.appendChild(el);
+    else if (after !== el) list.insertBefore(el, after);
+  } else {
+    // The dragged row is pointer-events:none, so this hits what is underneath.
+    const under = document.elementFromPoint(x, y);
+    if (!under) return;
+    let subs = under.closest("ul.subs");
+    if (!subs) {
+      const host = under.closest("li.task");
+      if (host && !host.classList.contains("collapsed")) subs = host.querySelector(":scope > ul.subs");
+    }
+    if (!subs) return;
+    const after = afterElement(subs, "li.sub", y);
+    if (after == null) subs.appendChild(el);
+    else if (after !== el) subs.insertBefore(el, after);
+  }
+
+  autoScroll(y);
+}
+
+function autoScroll(y) {
+  const edge = 70;
+  if (y < edge) window.scrollBy(0, -Math.ceil((edge - y) / 5));
+  else if (y > window.innerHeight - edge) window.scrollBy(0, Math.ceil((y - (window.innerHeight - edge)) / 5));
+}
+
+function afterElement(container, selector, y) {
+  const items = [...container.querySelectorAll(":scope > " + selector)]
+    .filter(el => el !== drag.el);
+  let best = { offset: Number.NEGATIVE_INFINITY, el: null };
+  for (const el of items) {
+    const box = el.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > best.offset) best = { offset, el };
+  }
+  return best.el;
+}
+
+/* Rebuild task / sub-task order from the DOM after a drag. */
+function commitOrder() {
+  const list = document.getElementById("list");
+  if (!list) return;
+
+  const tasksById = new Map(state.tasks.map(t => [t.id, t]));
+  const subsById = new Map();
+  state.tasks.forEach(t => t.subtasks.forEach(s => subsById.set(s.id, s)));
+
+  const tasks = [];
+  list.querySelectorAll(":scope > li.task").forEach(li => {
+    const t = tasksById.get(li.dataset.tid);
+    if (!t) return;
+    const subs = [];
+    li.querySelectorAll(":scope > ul.subs > li.sub").forEach(sli => {
+      const s = subsById.get(sli.dataset.sid);
+      if (s) subs.push(s);
+    });
+    tasks.push({ task: t, subs });
+  });
+
+  // Safety net: never lose an item to a DOM hiccup.
+  if (tasks.length !== state.tasks.length) return;
+  const kept = new Set();
+  tasks.forEach(x => x.subs.forEach(s => kept.add(s.id)));
+  if (kept.size !== subsById.size) return;
+
+  tasks.forEach(x => { x.task.subtasks = x.subs; });
+  state.tasks = tasks.map(x => x.task);
+  save();
+}
+
+/* ===============================================================
+   Top bar: theme, hide completed, menu
+=============================================================== */
+document.getElementById("btnTheme").addEventListener("click", () => {
+  state.theme = theme() === "dark" ? "light" : "dark";
+  save();
+  render();
+});
+
+document.getElementById("btnHide").addEventListener("click", () => {
+  state.hideCompleted = !state.hideCompleted;
+  save();
+  render();
+});
+
+const menu = document.getElementById("menu");
+document.getElementById("btnMenu").innerHTML = ICON.dots;
+
+menu.innerHTML = `
+  <button data-m="export"><span class="ico">${ICON.download}</span>Export backup (.json)</button>
+  <button data-m="import"><span class="ico">${ICON.upload}</span>Import backup</button>
+  <hr>
+  <button data-m="clear"><span class="ico">${ICON.broom}</span>Clear completed</button>
+  <button data-m="wipe" class="danger"><span class="ico">${ICON.trash}</span>Delete everything</button>`;
+
+function closeMenu() { menu.hidden = true; }
+
+document.getElementById("btnMenu").addEventListener("click", e => {
+  e.stopPropagation();
+  menu.hidden = !menu.hidden;
+});
+document.addEventListener("click", e => {
+  if (!menu.hidden && !e.target.closest(".menu-wrap")) closeMenu();
+});
+
+menu.addEventListener("click", e => {
+  const b = e.target.closest("[data-m]");
+  if (!b) return;
+  closeMenu();
+
+  switch (b.dataset.m) {
+    case "export": {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "todo-backup-" + ymd(new Date()) + ".json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      break;
+    }
+    case "import":
+      document.getElementById("importFile").click();
+      break;
+
+    case "clear": {
+      const n = state.tasks.filter(t => t.done).length +
+                state.tasks.reduce((a, t) => a + t.subtasks.filter(s => s.done).length, 0);
+      if (!n) { flash("Nothing completed to clear.", null); return; }
+      withUndo(n + " completed item" + (n > 1 ? "s" : "") + " cleared");
+      state.tasks = state.tasks.filter(t => !t.done);
+      state.tasks.forEach(t => { t.subtasks = t.subtasks.filter(s => !s.done); });
+      save();
+      render();
+      break;
+    }
+    case "wipe": {
+      if (!state.tasks.length) return;
+      if (!confirm("Delete every task and sub-task? You can still undo right after.")) return;
+      withUndo("Everything deleted");
+      state.tasks = [];
+      save();
+      render();
+      break;
+    }
+  }
+});
+
+document.getElementById("importFile").addEventListener("change", async e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!data || !Array.isArray(data.tasks)) throw new Error("Not a to-do backup file");
+    if (!confirm("Replace your current list with the contents of this backup?")) return;
+    withUndo("Backup imported");
+    const incoming = normalize(data);
+    incoming.theme = state.theme;
+    state = incoming;
+    save();
+    render();
+  } catch (err) {
+    flash("That file could not be read as a backup.", null);
+  }
+});
+
+/* Follow the system theme while no explicit choice is stored */
+if (window.matchMedia) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = () => { if (!state.theme) render(); };
+  mq.addEventListener ? mq.addEventListener("change", onChange) : mq.addListener(onChange);
+}
+
+/* Refresh relative dates ("Today" → "Yesterday") if left open past midnight */
+setInterval(() => { if (!ui.composer && !ui.dragging) render(); }, 60 * 60 * 1000);
+
+render();
+</script>
+</body>
+</html>
