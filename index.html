@@ -2,8 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>To-Do</title>
+<meta name="description" content="A personal to-do list with sub-tasks, progress bars and optional dates.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fcfaf8">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="To-Do">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 /* ---------------------------------------------------------------
    Palette — Todoist-flavoured
@@ -67,17 +77,21 @@ html[data-theme="dark"]{
    Base
 --------------------------------------------------------------- */
 *{box-sizing:border-box}
-html,body{height:100%}
+html{height:100%;background:var(--bg)}
 body{
-  margin:0;
+  margin:0;min-height:100%;
   background:var(--bg);
   color:var(--text);
+  /* Stops the grey tap flash and pull-to-refresh, both of which give an
+     installed app away as a web page. */
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:contain;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,"Helvetica Neue",Arial,sans-serif;
   font-size:14px;
   line-height:1.45;
   -webkit-font-smoothing:antialiased;
 }
-button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
 input,select,textarea{font:inherit;color:inherit}
 ul{list-style:none;margin:0;padding:0}
 ::selection{background:rgba(220,76,62,.22)}
@@ -88,7 +102,8 @@ ul{list-style:none;margin:0;padding:0}
 .topbar{
   position:sticky;top:0;z-index:40;
   display:flex;align-items:center;justify-content:space-between;
-  gap:12px;height:48px;padding:0 14px;
+  gap:12px;height:calc(48px + env(safe-area-inset-top));
+  padding:env(safe-area-inset-top) calc(14px + env(safe-area-inset-right)) 0 calc(14px + env(safe-area-inset-left));
   background:var(--bg-alt);
   border-bottom:1px solid var(--border);
 }
@@ -282,9 +297,12 @@ ul.subs .composer,.add-sub-composer{margin-left:0}
 .chip .x:hover{background:var(--hover-2);color:var(--text)}
 
 .c-actions{
-  display:flex;justify-content:flex-end;gap:8px;
+  display:flex;align-items:center;gap:8px;
   padding:9px 12px;border-top:1px solid var(--border);background:var(--bg-alt);
 }
+.c-actions .spacer{flex:1}
+.btn.danger{background:none;color:var(--p1);padding:0 10px}
+.btn.danger:hover{background:var(--p1-bg)}
 .btn{height:32px;padding:0 14px;border-radius:6px;font-size:13px;font-weight:500}
 .btn.primary{background:var(--red);color:#fff}
 .btn.primary:hover{background:var(--red-hover)}
@@ -324,13 +342,85 @@ html[data-theme="dark"] .toast{background:#3a3a3a}
 html[data-theme="dark"] .toast button{color:#ff8b7e}
 .toast button:hover{text-decoration:underline}
 
+/* ---------------------------------------------------------------
+   Phone: floating add button + the composer as a bottom sheet
+--------------------------------------------------------------- */
+.fab{
+  display:none;
+  position:fixed;z-index:55;
+  right:calc(18px + env(safe-area-inset-right));
+  bottom:calc(18px + env(safe-area-inset-bottom));
+  width:56px;height:56px;border-radius:50%;
+  background:var(--red);color:#fff;
+  place-items:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.28);
+}
+.fab:active{background:var(--red-hover);transform:scale(.94)}
+.fab svg{width:26px;height:26px;stroke-width:2.4}
+
+.scrim{
+  display:none;position:fixed;inset:0;z-index:65;
+  background:rgba(0,0,0,.35);
+}
+
 :focus-visible{outline:2px solid var(--p3);outline-offset:2px;border-radius:4px}
 .c-title:focus-visible{outline:none}
 .check:focus-visible{outline-offset:3px}
 
 @media (max-width:560px){
-  main{padding:20px 22px 100px}
+  main{
+    padding:18px calc(16px + env(safe-area-inset-right))
+           calc(96px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  }
+  .page-head h1{font-size:22px}
+
+  /* Nothing is hover-only on a touch screen. */
   .grip,.actions{opacity:1}
+
+  /* The grip sits inboard of the action icons: dragging from the very edge
+     of the screen would fight Android's back gesture. */
+  .grip{
+    position:static;order:3;flex:none;
+    width:32px;height:30px;margin-top:-4px;
+  }
+  .check{order:1}
+  .body{order:2}
+  .actions{order:4}
+  .row{padding-left:26px;padding-top:11px;padding-bottom:11px}
+  li.sub .row{padding-top:9px;padding-bottom:9px}
+  .chev{left:0}
+
+  /* Bigger targets for fingers. */
+  .check{width:24px;height:24px}
+  li.sub .check{width:22px;height:22px}
+  .check svg{width:14px;height:14px}
+  .act{width:32px;height:32px}
+  /* Tapping the title opens the editor, which is also where Delete lives. */
+  .act[data-act="edit"],.act.del{display:none}
+
+  .fab{display:grid}
+  .add-task{display:none}
+  .add-sub{margin-left:50px;padding:8px 0 10px}
+
+  /* Adding a task comes up from the bottom, clear of the keyboard. */
+  .composer[data-mode="add"]{
+    position:fixed;left:0;right:0;bottom:0;z-index:70;margin:0;
+    border-radius:14px 14px 0 0;border-left:0;border-right:0;border-bottom:0;
+    box-shadow:0 -6px 30px rgba(0,0,0,.22);
+  }
+  .composer[data-mode="add"] .c-actions{
+    padding-bottom:calc(9px + env(safe-area-inset-bottom));
+  }
+  body.sheet-open .scrim{display:block}
+  /* Never let the floating button sit over an open editor. */
+  body.composer-open .fab{display:none}
+  .chip{height:32px;padding:0 10px;font-size:13px}
+  .btn{height:36px}
+}
+
+@media (display-mode:standalone){
+  /* Installed: no browser chrome to scroll away, so the bar can be flat. */
+  .topbar{border-bottom:1px solid var(--border)}
 }
 </style>
 </head>
@@ -359,6 +449,9 @@ html[data-theme="dark"] .toast button{color:#ff8b7e}
   </div>
   <div id="app"></div>
 </main>
+
+<div class="scrim" id="scrim"></div>
+<button class="fab" id="fab" aria-label="Add task" title="Add task"></button>
 
 <div class="toast" id="toast" role="status" aria-live="polite">
   <span id="toastMsg"></span>
@@ -414,20 +507,20 @@ function seed() {
   const today = ymd(new Date());
   s.tasks = [
     {
-      id: uid(), title: "Welcome — this list is yours, delete these when you like",
+      id: uid(), title: "Welcome — tap a task to edit or delete it",
       done: false, due: null, priority: 4, collapsed: false, createdAt: Date.now(),
       subtasks: [
-        { id: uid(), title: "Tick a sub-task and watch the bar below fill up", done: true, due: null, priority: 4, createdAt: Date.now() },
-        { id: uid(), title: "Hover a row for the grip, edit and delete buttons", done: false, due: null, priority: 4, createdAt: Date.now() },
+        { id: uid(), title: "Tick a sub-task and watch the bar fill up", done: true, due: null, priority: 4, createdAt: Date.now() },
+        { id: uid(), title: "Drag the grip to reorder anything", done: false, due: null, priority: 4, createdAt: Date.now() },
         { id: uid(), title: "Dates are optional — add one only if you want", done: false, due: today, priority: 4, createdAt: Date.now() }
       ]
     },
     {
-      id: uid(), title: "Try the priority flags when adding a task",
+      id: uid(), title: "Try the priority flags when you add a task",
       done: false, due: null, priority: 2, collapsed: false, createdAt: Date.now(), subtasks: []
     },
     {
-      id: uid(), title: "Everything saves automatically in this browser",
+      id: uid(), title: "Everything saves on this device automatically",
       done: false, due: null, priority: 4, collapsed: false, createdAt: Date.now(), subtasks: []
     }
   ];
@@ -552,16 +645,22 @@ function theme() {
    Render
 =============================================================== */
 const app = document.getElementById("app");
+const metaTheme = document.querySelector('meta[name="theme-color"]');
 
 function render() {
   if (ui.dragging) return;
   if (draftIsFresh) draftIsFresh = false;
   else snapshotComposer();
 
-  document.documentElement.dataset.theme = theme();
+  const dark = theme() === "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
   document.body.classList.toggle("hide-done", state.hideCompleted);
+  // Match the phone's status bar to the app's own top bar.
+  metaTheme.setAttribute("content", dark ? "#282828" : "#fcfaf8");
+  document.body.classList.toggle("composer-open", !!ui.composer);
+  document.body.classList.toggle("sheet-open", !!ui.composer && ui.composer.mode === "add");
 
-  document.getElementById("btnTheme").innerHTML = theme() === "dark" ? ICON.sun : ICON.moon;
+  document.getElementById("btnTheme").innerHTML = dark ? ICON.sun : ICON.moon;
   const hideBtn = document.getElementById("btnHide");
   hideBtn.innerHTML = state.hideCompleted ? ICON.eyeOff : ICON.eye;
   hideBtn.classList.toggle("on", state.hideCompleted);
@@ -673,7 +772,7 @@ function composerHTML(mode, submitLabel) {
   const di = dueInfo(d.due);
   const placeholder = mode === "add-sub" ? "Sub-task name" : "Task name";
 
-  return `<form class="composer" data-composer>
+  return `<form class="composer" data-composer data-mode="${mode}">
     <div class="c-main">
       <input class="c-title" type="text" placeholder="${placeholder}"
              value="${esc(d.title)}" autocomplete="off" spellcheck="true">
@@ -693,6 +792,10 @@ function composerHTML(mode, submitLabel) {
       </label>
     </div>
     <div class="c-actions">
+      ${mode === "edit"
+        ? `<button type="button" class="btn danger" data-act="composer-delete">Delete</button>`
+        : ""}
+      <span class="spacer"></span>
       <button type="button" class="btn ghost" data-act="cancel">Cancel</button>
       <button type="submit" class="btn primary">${submitLabel}</button>
     </div>
@@ -717,7 +820,7 @@ function hydrateComposer() {
   input.focus();
   const v = input.value;
   input.setSelectionRange(v.length, v.length);
-  f.scrollIntoView({ block: "nearest" });
+  if (getComputedStyle(f).position !== "fixed") f.scrollIntoView({ block: "nearest" });
 }
 
 /* ===============================================================
@@ -726,11 +829,51 @@ function hydrateComposer() {
 function openComposer(composer, draft) {
   ui.composer = composer;
   setDraft(draft || emptyDraft());
+  pushBackStop();
   render();
 }
 function closeComposer() {
+  const wasOpen = !!ui.composer;
   ui.composer = null;
   ui.draft = null;
+  render();
+  if (wasOpen) popBackStop();
+}
+
+/* One history entry while a composer is open, so the phone's back gesture
+   dismisses it instead of closing the whole app. */
+let backStop = false;
+function pushBackStop() {
+  if (backStop) return;
+  backStop = true;
+  try { history.pushState({ composer: true }, ""); } catch (_) { backStop = false; }
+}
+function popBackStop() {
+  if (!backStop) return;
+  backStop = false;
+  try { history.back(); } catch (_) {}
+}
+window.addEventListener("popstate", () => {
+  backStop = false;
+  if (ui.composer) { ui.composer = null; ui.draft = null; render(); }
+});
+
+function deleteItem(taskId, subId) {
+  const t = findTask(taskId);
+  if (!t) return;
+
+  if (subId) {
+    if (!findSub(taskId, subId)) return;
+    withUndo("Sub-task deleted");
+    t.subtasks = t.subtasks.filter(x => x.id !== subId);
+  } else {
+    const n = t.subtasks.length;
+    withUndo(n ? `Task and ${n} sub-task${n > 1 ? "s" : ""} deleted` : "Task deleted");
+    state.tasks = state.tasks.filter(x => x.id !== taskId);
+  }
+
+  if (ui.composer && ui.composer.taskId === taskId) { ui.composer = null; ui.draft = null; }
+  save();
   render();
 }
 
@@ -854,24 +997,15 @@ app.addEventListener("click", e => {
       break;
     }
 
-    case "delete": {
-      if (subId) {
-        const t = findTask(taskId);
-        if (!t) return;
-        const s = findSub(taskId, subId);
-        withUndo(`Sub-task deleted`);
-        t.subtasks = t.subtasks.filter(x => x.id !== subId);
-      } else {
-        const t = findTask(taskId);
-        if (!t) return;
-        withUndo(t.subtasks.length
-          ? `Task and ${t.subtasks.length} sub-task${t.subtasks.length > 1 ? "s" : ""} deleted`
-          : `Task deleted`);
-        state.tasks = state.tasks.filter(x => x.id !== taskId);
-      }
-      if (ui.composer && ui.composer.taskId === taskId) { ui.composer = null; ui.draft = null; }
-      save();
-      render();
+    case "delete":
+      deleteItem(taskId, subId);
+      break;
+
+    case "composer-delete": {
+      const c = ui.composer;
+      if (!c || c.mode !== "edit") return;
+      closeComposer();
+      deleteItem(c.taskId, c.subId);
       break;
     }
 
@@ -1153,6 +1287,30 @@ document.getElementById("importFile").addEventListener("change", async e => {
     flash("That file could not be read as a backup.", null);
   }
 });
+
+/* ===============================================================
+   Phone chrome: floating add button, scrim, install as an app
+=============================================================== */
+const fab = document.getElementById("fab");
+fab.innerHTML = ICON.plus;
+fab.addEventListener("click", () => openComposer({ mode: "add" }));
+document.getElementById("scrim").addEventListener("click", closeComposer);
+
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      reg.addEventListener("updatefound", () => {
+        const fresh = reg.installing;
+        if (!fresh) return;
+        fresh.addEventListener("statechange", () => {
+          if (fresh.state === "installed" && navigator.serviceWorker.controller) {
+            flash("Update installed — reopen the app to use it.", null);
+          }
+        });
+      });
+    }).catch(err => console.warn("Offline support unavailable:", err));
+  });
+}
 
 /* Follow the system theme while no explicit choice is stored */
 if (window.matchMedia) {

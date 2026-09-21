@@ -1,41 +1,75 @@
 # To-Do
 
-A personal to-do list in a single HTML file, styled after Todoist.
+A personal to-do list — one page, no accounts, no server, no tracking. Installs
+onto an Android phone as a real app.
 
-## Using it
+## Install it on your phone
 
-Open `index.html` in any browser — double-click it, or drag it onto a browser
-window. There is nothing to install and no server to run. Bookmark the tab (or
-on a Mac, drag the address bar icon to the Dock) and it opens like an app.
+The app needs to be reachable over `https://` before Android will install it.
+Once it is, on your OnePlus:
+
+1. Open the URL in Chrome.
+2. Tap **⋮ → Add to Home screen** (Chrome may offer **Install app** by itself).
+3. Confirm.
+
+Android builds a real app package from it. It lands in your app drawer with its
+own icon, opens in its own window with no address bar, shows up in the recents
+switcher, and works with no signal at all. The back gesture closes whatever
+you have open rather than quitting.
+
+### Publishing it
+
+Anything that serves static files over https works. Two free routes:
+
+- **GitHub Pages** — needs this repo to be public (or a paid plan). Enable it
+  at *Settings → Pages → Source → GitHub Actions*; `.github/workflows/pages.yml`
+  then publishes on every push to the default branch. The URL is
+  `https://<user>.github.io/To-Do/`.
+- **Netlify / Cloudflare Pages** — both connect to a *private* repo on their
+  free tier and give you an https URL. Point them at this repo, no build
+  command, publish directory `.`.
+
+## On a computer
+
+Open `index.html` straight from disk — it works with no server at all. For an
+app-like window, use Chrome's **⋮ → Cast, save and share → Install page as app**,
+or Safari's **File → Add to Dock**.
 
 ## What it does
 
-- **Tasks and sub-tasks.** Every task can hold sub-points, one level deep.
-- **Progress bar.** A task with sub-tasks shows a bar and a count underneath it
-  in the list. The bar turns green when everything below it is ticked. Ticking
-  every sub-task does *not* auto-complete the parent — that stays your call.
-- **Optional dates.** Add a due date if you want one, leave it off if you
-  don't. Dates read as `Today`, `Tomorrow`, `Friday`, `3 Oct`, and are colour
-  coded: red when overdue, green today, amber tomorrow.
+- **Tasks and sub-tasks**, one level deep.
+- **Progress bar.** A task with sub-tasks shows a bar and a count underneath it,
+  green once everything below it is ticked. Ticking every sub-task does *not*
+  auto-complete the parent — that stays your call.
+- **Optional dates.** Shown as `Today`, `Tomorrow`, `Friday`, `3 Oct`, coloured
+  red when overdue, green today, amber tomorrow.
 - **Priority flags** P1–P4, shown as the colour of the checkbox ring.
-- **Drag to reorder** by the grip handle on the left of a row. Sub-tasks can be
-  dragged between tasks. Works with a mouse and with touch.
-- **Dark mode** — follows your system until you pick a side with the moon/sun
-  button.
-- **Hide completed** with the eye button.
-- **Undo** — deleting anything offers an undo for a few seconds.
+- **Drag to reorder** by the grip handle. Sub-tasks can be dragged between
+  tasks. Works with a mouse and with a finger.
+- **Dark mode**, following the system until you pick a side. The phone's status
+  bar follows it too.
+- **Hide completed**, and **undo** on anything destructive.
 
-### Keyboard
-
-| Key | |
-|---|---|
-| `Enter` | save, and stay open to type the next one |
-| `Esc` | close the composer |
+Tap a task to edit it; that panel is also where **Delete** lives. On a computer,
+hover a row for its buttons.
 
 ## Where your data lives
 
-In this browser's `localStorage`, saved on every change. That means it is tied
-to this one browser on this one machine, and clearing site data will wipe it.
+In the browser's `localStorage` on the device you use it on, saved on every
+change. There is no sync — the phone and a laptop would keep separate lists.
 
-Use **⋮ → Export backup** now and then; **Import backup** restores a file.
-Nothing is ever sent anywhere — the app makes no network requests at all.
+The app makes no network requests of its own, so nothing ever leaves your
+device. Use **⋮ → Export backup** now and then; **Import backup** restores it.
+
+One catch worth knowing: storage is tied to the exact origin. A list built up
+at `file://` on a laptop will not appear at your `https://` URL — export from
+one and import into the other.
+
+## Files
+
+| | |
+|---|---|
+| `index.html` | the whole app — markup, styles and logic |
+| `manifest.webmanifest` | name, icons and colours used when installing |
+| `sw.js` | service worker; makes it work offline |
+| `icons/` | launcher icons |
